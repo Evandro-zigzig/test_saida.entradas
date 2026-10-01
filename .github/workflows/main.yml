@@ -15,7 +15,7 @@ on:
 
       Motivo:
         required: true
-        description: Testando a tela do login
+        description: Motivo do deploy
         type: string
 
       Notificar:
