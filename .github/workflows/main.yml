@@ -1,0 +1,35 @@
+name: Ativação manual de inputs
+
+run-name: "${{ inputs.Ambiente}} por @${{ github.actor}} - Motivo: ${{ inputs.Motivo}}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      Ambiente:
+        required: true
+        description: Selecione o ambiente
+        type: choice
+        options:
+          - Homologação
+          - Produção
+
+      Motivo:
+        required: true
+        description: Testando a tela do login
+        type: string
+
+      Notificar:
+        required: true
+        description: Notificar no slack
+        type: boolean
+
+jobs:
+  Execute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mostre os echos
+        run: |
+          echo "Ambiente selecionado: ${{ inputs.Ambiente}}"   
+          echo "Usuário que disparou: ${{ github.actor}}" 
+          echo "Motivo do deploy: ${{ inputs.Motivo}}"
+          echo "Notificar no slack: ${{ inputs.Notificar}}"
