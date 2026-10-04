@@ -43,6 +43,6 @@ jobs:
 
       - name: Conteúdo dos arquivos
         run: |
-            cat artefactos/relatorio_1.txt  
-            cat artefactos/relatorio_2.txt 
+            cat meu-artefacto/artefactos/relatorio_1.txt  
+            cat meu-artefacto/artefactos/relatorio_2.txt 
             echo "${{ needs.compilar.outputs.token_validacao}}"  
