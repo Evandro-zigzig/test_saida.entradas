@@ -1,0 +1,48 @@
+name: Persistir Relatório via artefactos entre Jobs
+ 
+on:
+   workflow_dispatch:
+
+run-name: "Persistencia de Arquivos por @${{ github.actor }}"          
+
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    outputs:
+      token_validacao: ${{ steps.gerador.outputs.chave_checksum}}
+    steps:
+      - name: Criação dos arquivos
+        run: |
+          mkdir artefactos
+          echo "Build efetuado com sucesso!" > ./artefactos/relatorio_1.txt
+          echo "Build falhado!" > ./artefactos/relatorio_2.txt
+        
+      - name: Criação do Output de Texto
+        id: gerador
+        run: |
+          echo "chave_checksum=VALIDADO-2026" >> $GITHUB_OUTPUT 
+
+      - name: Carregamento dos arquivos
+        uses: actions/upload-artifact@v7
+        with:
+          name: meu-artefacto
+          path: ./artefactos 
+
+      - name: Listagem dos arquivos 
+        run: ls     
+
+  publicar:
+    needs: compilar
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fazer a publicação
+        uses: actions/download-artifact@v8
+        with:
+          name: meu-artefacto
+
+      - name: Conteúdo dos arquivos
+        run: |
+            cat meu-artefacto/1-relatorio.txt  
+            cat meu-artefacto/2-relatorio.txt 
+            echo "${{ needs.compilar.outputs.token_validacao}}"  
