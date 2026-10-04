@@ -35,7 +35,7 @@ jobs:
 
       - name: Endereço para obter os artefactos
         run: | 
-          echo "${{ steps.upload-artifact.outputs.artifact_url}}"    
+          echo "${{ steps.upload-artifact.outputs.artifact-url}}"    
 
   publicar:
     needs: compilar
