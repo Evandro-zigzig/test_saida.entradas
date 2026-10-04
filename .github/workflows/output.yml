@@ -23,4 +23,4 @@ jobs:
     steps:
       - name: Mostrar a versão
         run: |
-          echo " ${{ needs.build_job.outputs.saida }} "
+          echo "versão_global: ${{ needs.build_job.outputs.saida }} "
