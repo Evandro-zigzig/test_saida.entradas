@@ -15,7 +15,7 @@ jobs:
       - name: Build da versão
         id: build_ID
         run: |
-          echo "versao_global=V-${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "versao_global=${{ github.run_number }}" >> $GITHUB_OUTPUT
 
   deploy_job:
     needs: build_job
