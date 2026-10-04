@@ -1,0 +1,26 @@
+name: Passando Versão do Build para o Job de Deploy          
+
+on:
+  workflow_dispatch:
+
+run-name: "Pipeline Multi-Job por @${{ github.actor }}"
+
+jobs:
+  build_job:
+    runs-on: ubuntu-latest
+    outputs: 
+      saida: ${{ steps.build_ID.outputs.versao_global }}
+
+    steps:
+      - name: Build da versão
+        id: build_ID
+        run: |
+          echo "versao_global=V-${{ github.run_number }}" >> $GITHUB_OUTPUT
+
+  deploy_job:
+    needs: build_job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mostrar a versão
+        run: |
+          echo " ${{ needs.build_job.outputs.saida }} "
