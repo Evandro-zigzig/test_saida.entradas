@@ -54,5 +54,5 @@ jobs:
 
       - name: Exibição dos logs
         run: |
-          cat ./pacote_codigo/app.zip 
+          echo "ls" 
           echo " ${{ needs.build_job.outputs.versao_saida}}" 
