@@ -54,5 +54,5 @@ jobs:
 
       - name: Exibição dos logs
         run: |
-          ls ./pacote_codigo 
+          ls 
           echo " ${{ needs.build_job.outputs.versao_saida}}" 
