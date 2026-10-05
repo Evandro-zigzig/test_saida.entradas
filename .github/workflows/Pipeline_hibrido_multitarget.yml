@@ -50,9 +50,9 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: pacote_distribuicao
-          path: . 
+          path: .  
 
       - name: Exibição dos logs
         run: |
-          cat pacote_codigo/app.zip 
+          cat ./pacote_codigo/app.zip 
           echo " ${{ needs.build_job.outputs.versao_saida}}" 
