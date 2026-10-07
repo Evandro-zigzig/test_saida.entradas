@@ -85,7 +85,7 @@ jobs:
 
       - name: Leitura Hibrida
         run: |
-          cat pasta_auditoria/log.txt
+          cat ./pasta_auditoria/log.txt
           echo " Status: ${{ needs.gerar_relatorios.outputs.saida_1 }} " 
 
   alarme_falha:
