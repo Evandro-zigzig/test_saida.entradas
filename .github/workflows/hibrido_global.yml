@@ -40,13 +40,13 @@ jobs:
       - name: Criação de ficheiros
         run: |
           mkdir logs_teste
-          echo "Matriz ok" > logs_teste/resultado.txt
+          echo "Matriz ok" > logs_teste/resultado.tx
 
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
           name: teste-${{ matrix.os}}-${{ matrix.node_version}} # dinamico
-          path: logs_teste
+          path: logs_test
 
       - name: Output Global
         id: global
