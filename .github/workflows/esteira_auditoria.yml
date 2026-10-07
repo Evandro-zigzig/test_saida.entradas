@@ -1,0 +1,98 @@
+name: Esteira de auditoria
+
+on:
+  push:
+    branches: [feature/**, release/**]
+  pull_request:
+    branches:
+      - main
+
+  schedule:
+    - cron: '0 23 * * 0'    
+
+  workflow_dispatch:
+    inputs:
+      ambiente: 
+        description: Selecione o ambiente
+        required: true
+        type: choice
+        options:
+          - desenvolvimento
+          - teste
+          - producao
+
+      token_verificacao:
+        description: Escreva a senha token
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow}}-${{github.ref}}
+  cancel-in-progress: true
+
+run-name: "Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
+
+jobs:
+  gerar_relatorios:
+    outputs:
+      saida_1: ${{ steps.tuk_1.outputs.status_fase_1}}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        nuvem: [aws, gcp]
+    runs-on: ${{ matrix.os}}
+    
+    steps:
+      - name: Criacao da pasta e ficheiro
+        run: |
+          mkdir pasta_auditoria
+          echo "Relatorio Nuvem OK" > ./pasta_auditoria/log.txt
+
+      - name: Upload Dinamico
+        uses: actions/upload-artifact@v7
+        with:
+          name: auditoria-${{matrix.os }}-${{matrix.nuvem}}
+          path: pasta_auditoria
+
+      - name: Exportacao Global
+        id: tuk_1
+        run: |
+          echo "status_fase_1=MATRIZ-SUCESSO" >> $GITHUB_OUTPUT
+
+  validar_tokens:
+    needs: [gerar_relatorios] 
+    if: github.event_name == 'workflow_dispatch' && success()
+    runs-on: ubuntu-latest
+    env:
+      TOKEN_CORRETO: ${{ secrets.TOKEN_PRODUCAO }}
+    steps:
+      - name: Trava no step
+        if: github.event.inputs.token_verificacao == env.TOKEN_CORRETO
+        run: |
+          echo "Token Validado com Sucesso"  
+
+  deploy_ambientes:
+    needs: [validar_tokens, gerar_relatorios]
+    if: success()
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.ambiente}}
+    steps:
+      - name: Download do Artefacto
+        uses: actions/download-artifact@v8
+        with:
+          name: auditoria-ubuntu-latest-aws
+          path: .
+
+      - name: Leitura Hibrida
+        run: |
+          cat pasta_auditoria/log.txt
+          echo " Status: ${{ needs.gerar_relatorios.outputs.saida_1 }} " 
+
+  alarme_falha:
+    needs: [gerar_relatorios, validar_tokens, deploy_ambientes]
+    if: failure()  
+    runs-on: ubuntu-latest 
+    steps:
+      - name: Notificacao de erros
+        run: |
+          echo "PANE NO SISTEMA: Auditoria abortada por falha crítica" 
