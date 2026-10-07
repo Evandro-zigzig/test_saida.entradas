@@ -30,7 +30,7 @@ concurrency:
   group: ${{ github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
-run-name: "Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
+run-name: "${{ inputs.ambiente || 'CI'}} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
 
 jobs:
   gerar_relatorios:
@@ -43,16 +43,16 @@ jobs:
     runs-on: ${{ matrix.os}}
     
     steps:
-      - name: Criacao da pasta e ficheiro
+      - name: Criacao dos logs de auditoria
         run: |
-          mkdir pasta_auditoria
-          echo "Relatorio Nuvem OK" > ./pasta_auditoria/log.txt
+          
+          echo "Relatorio Nuvem OK ${{ matrix.nuvem}} em ${{ matrix.os}}" 
 
       - name: Upload Dinamico
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: auditoria-${{matrix.os }}-${{matrix.nuvem}}
-          path: pasta_auditoria
+          path: log.txt
 
       - name: Exportacao Global
         id: tuk_1
@@ -65,6 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TOKEN_CORRETO: ${{ secrets.TOKEN_PRODUCAO }}
+      if: github.event.inputs.ambiente == 'producao'  
     steps:
       - name: Trava no step
         if: github.event.inputs.token_verificacao == env.TOKEN_CORRETO
@@ -78,14 +79,17 @@ jobs:
     environment: ${{ github.event.inputs.ambiente}}
     steps:
       - name: Download do Artefacto
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
-          name: auditoria-ubuntu-latest-aws
-          path: .
+          path: ./pasta_geral_auditoria
 
       - name: Leitura Hibrida
         run: |
-          cat ./pasta_auditoria/log.txt
+          find ./pasta_geral_auditoria -name "log.txt" | while read -r arquivo; do
+          echo " $(basename $(dirname "$arquivo"))"
+          cat "$arquivo"  
+          echo "------------------------------"
+          done 
           echo " Status: ${{ needs.gerar_relatorios.outputs.saida_1 }} " 
 
   alarme_falha:
