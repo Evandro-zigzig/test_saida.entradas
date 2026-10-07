@@ -1,0 +1,48 @@
+name: Pipeline Híbrido Global
+
+on: 
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      token_seguranca:
+        description: "Insira a chave token"
+        required: true
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref}} 
+  cancel-in-progress: true
+
+run-name: "Pipeline acionada por @${{ github.actor}} via GATILHO ${{ github.event_name }} e a versao ${{github.run_number}}" 
+
+
+jobs:
+  test_matrix_job:
+    outputs:  
+      saida_1: ${{ steps.global.outputs.status_fase_1}}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node_version: [18, 20]
+    runs-on: ${{ matrix.os}}
+    steps:
+      - name: Criação de ficheiros
+        run: |
+          mkdir logs_teste
+          echo "Matriz ok" > logs_teste/resultado.txt
+
+      - name: Upload
+        uses: actions/upload-artifact@v7
+        with:
+          name: teste-${{ matrix.os}}-${{ matrix.node_version}} 
+          path: logs_teste
+
+      - name: Output Global
+        id: global
+        run: |
+          echo "status_fase_1=MATRIZ-CONCLUIDA" >> $GITHUB_OUTPUT                 
