@@ -35,18 +35,18 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         node_version: [18, 20]
-    runs-on: ${{ matrix.os}}
+    runs-on: ${{ matrix.o}}
     steps:
       - name: Criação de ficheiros
         run: |
           mkdir logs_teste
-          echo "Matriz ok" > logs_teste/resultado.tx
+          echo "Matriz ok" > logs_teste/resultado.txt
 
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
           name: teste-${{ matrix.os}}-${{ matrix.node_version}} # dinamico
-          path: logs_test
+          path: logs_teste
 
       - name: Output Global
         id: global
