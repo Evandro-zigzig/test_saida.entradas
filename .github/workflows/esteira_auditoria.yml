@@ -1,4 +1,4 @@
-Name: Esteira de auditoria
+name: Esteira de auditoria
 
 on:
   push:
