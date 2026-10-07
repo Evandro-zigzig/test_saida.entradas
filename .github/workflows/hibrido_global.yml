@@ -9,6 +9,13 @@ on:
     - cron: '0 2 * * *'
   workflow_dispatch:
     inputs:
+      ambiente_alvo:
+        description: "Selecione o ambiente de execução"
+        required: true
+        type: choice
+        options:
+          - homologacao
+          - producao
       token_seguranca:
         description: "Insira a chave token"
         required: true
@@ -19,7 +26,6 @@ concurrency:
   cancel-in-progress: true
 
 run-name: "Pipeline acionada por @${{ github.actor}} via GATILHO ${{ github.event_name }} e a versao ${{github.run_number}}" 
-
 
 jobs:
   test_matrix_job:
@@ -39,10 +45,39 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v7
         with:
-          name: teste-${{ matrix.os}}-${{ matrix.node_version}} 
+          name: teste-${{ matrix.os}}-${{ matrix.node_version}} # dinamico
           path: logs_teste
 
       - name: Output Global
         id: global
         run: |
-          echo "status_fase_1=MATRIZ-CONCLUIDA" >> $GITHUB_OUTPUT                 
+          echo "status_fase_1=MATRIZ-CONCLUIDA" >> $GITHUB_OUTPUT             
+    
+  deploy_producao_job:
+    needs: test_matrix_job
+    runs-on: ubuntu-latest
+    if: ${{github.event_name == 'workflow_dispatch' && success()}}
+    env:
+      CHAVE_SISTEMA: ${{ secrets.TOKEN_PRODUCAO }} 
+    environment: producao
+    steps:
+      - name: Download do Artefacto do Linux com Node-20
+        if:  github.event.inputs.token_seguranca == env.CHAVE_SISTEMA 
+        uses: actions/download-artifact@v8
+        with:
+          name: teste-ubuntu-latest-20
+          path: ./pasta_deploy
+      - name: 
+        run: |
+          cat ./pasta_deploy/resultado.txt
+
+  notificar_falha_job:
+    needs: [test_matrix_job, deploy_producao_job]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Alerta!!!!!!!!!!!!!!!!!!
+        run: |
+          echo "Alerta Máximo: A esteira falhou em algum ponto crítico."      
+
+        
