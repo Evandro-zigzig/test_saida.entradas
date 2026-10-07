@@ -65,8 +65,8 @@ jobs:
         if:  github.event.inputs.token_seguranca == env.CHAVE_SISTEMA 
         uses: actions/download-artifact@v8
         with:
-          name: teste-ubuntu-latest-20
-          path: ./pasta_deploy
+          name: teste-ubuntu-latest-2
+          path: ./pasta_deplo
       - name: 
         run: |
           cat ./pasta_deploy/resultado.txt
