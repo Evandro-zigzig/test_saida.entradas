@@ -65,7 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TOKEN_CORRETO: ${{ secrets.TOKEN_PRODUCAO }}
-      if: github.event.inputs.ambiente == 'producao'  
+      if: github.event.inputs.ambiente != 'producao' || github.event.inputs.token_verificacao == env.TOKEN_CORRETO 
     steps:
       - name: Trava no step
         if: github.event.inputs.token_verificacao == env.TOKEN_CORRETO
