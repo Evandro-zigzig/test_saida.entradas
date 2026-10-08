@@ -86,9 +86,9 @@ jobs:
       - name: Leitura Hibrida
         run: |
           find ./pasta_geral_auditoria -name "log.txt" | while read -r arquivo; do
-          echo " $(basename $(dirname "$arquivo"))"
-          cat "$arquivo"  
-          echo "------------------------------"
+            echo " $(basename $(dirname "$arquivo"))"
+            cat "$arquivo"  
+            echo "------------------------------"
           done 
           echo " Status: ${{ needs.gerar_relatorios.outputs.saida_1 }} " 
 
