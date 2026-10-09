@@ -1,4 +1,4 @@
-name: Esteira de auditoria
+name: Auditoria Global Multi-Cloud
 
 on:
   push:
@@ -20,7 +20,6 @@ on:
           - desenvolvimento
           - teste
           - producao
-
       token_verificacao:
         description: Escreva a senha token
         required: true
@@ -30,13 +29,14 @@ concurrency:
   group: ${{ github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
-run-name: "${{ inputs.ambiente || 'CI'}} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
+run-name: "${{github.event.inputs.ambiente}} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
 
 jobs:
   gerar_relatorios:
     outputs:
       saida_1: ${{ steps.tuk_1.outputs.status_fase_1}}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
         nuvem: [aws, gcp]
@@ -45,8 +45,8 @@ jobs:
     steps:
       - name: Criacao dos logs de auditoria
         run: |
-          
-          echo "Relatorio Nuvem OK ${{ matrix.nuvem}} em ${{ matrix.os}}" 
+          shell: bash
+          echo "Relatorio Nuvem OK: ${{ matrix.nuvem}} em ${{ matrix.os}}" > log.txt
 
       - name: Upload Dinamico
         uses: actions/upload-artifact@v4
@@ -65,10 +65,9 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TOKEN_CORRETO: ${{ secrets.TOKEN_PRODUCAO }}
-      if: github.event.inputs.ambiente != 'producao' || github.event.inputs.token_verificacao == env.TOKEN_CORRETO 
     steps:
       - name: Trava no step
-        if: github.event.inputs.token_verificacao == env.TOKEN_CORRETO
+        if: ${{inputs.ambiente != 'producao' || inputs.ambiente == 'producao' && inputs.token_verificacao == env.TOKEN_CORRETO}} 
         run: |
           echo "Token Validado com Sucesso"  
 
@@ -76,25 +75,27 @@ jobs:
     needs: [validar_tokens, gerar_relatorios]
     if: success()
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.ambiente}}
+    environment: ${{ inputs.ambiente}}
     steps:
       - name: Download do Artefacto
         uses: actions/download-artifact@v4
         with:
-          path: ./pasta_geral_auditoria
+          path: pasta_geral_auditoria
 
       - name: Leitura Hibrida
+        shell: bash
         run: |
-          find ./pasta_geral_auditoria -name "log.txt" | while read -r arquivo; do
-            echo " $(basename $(dirname "$arquivo"))"
+          find ./pasta_geral_auditoria -type f -name "log.txt" | while read -r arquivo; do
+            infra="$(basename $(dirname "$arquivo")")
+            echo "Infra: $infra"
             cat "$arquivo"  
-            echo "------------------------------"
           done 
+          echo "------------------------------"
           echo " Status: ${{ needs.gerar_relatorios.outputs.saida_1 }} " 
 
   alarme_falha:
     needs: [gerar_relatorios, validar_tokens, deploy_ambientes]
-    if: failure()  
+    if: failure() || cancelled()
     runs-on: ubuntu-latest 
     steps:
       - name: Notificacao de erros
