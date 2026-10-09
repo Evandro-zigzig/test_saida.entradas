@@ -1,4 +1,4 @@
-name: Auditoria Global & Multi-Cloud
+name: Auditoria Global and Multi-Cloud
 
 on:
   push:
@@ -31,7 +31,7 @@ concurrency:
   group: ${{ github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
-run-name: "${{inputs.ambiente}} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
+run-name: "${{ inputs.ambiente || 'CI' }} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
 
 jobs:
   Relatorios-Multi-Nuvem:
@@ -48,7 +48,7 @@ jobs:
       - name: Criacao dos logs de auditoria
         shell: bash 
         run: |
-          echo "Relatorio Nuvem OK: ${{ matrix.nuvem}} em ${{ matrix.os}}" > log.txt
+          echo "Relatorio Nuvem OK para ${{ matrix.nuvem}} em ${{ matrix.os}}" > log.txt
 
       - name: Upload Dinamico
         uses: actions/upload-artifact@v4
@@ -59,7 +59,7 @@ jobs:
       - name: Exportacao de Metadados
         id: tuk_1
         run: |
-          echo "status_fase_1=MATRIZ-SUCESSO" >> $GITHUB_OUTPUT
+          echo "status_fase_1=MATRIZ-SUCESSO" >> "$GITHUB_OUTPUT"
 
   autenticar_producao:
     needs: [Relatorios-Multi-Nuvem] 
