@@ -93,6 +93,8 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: pasta_geral_auditoria
+          pattern: pasta_geral_auditoria/*
+          merge-multiple: true 
 
       - name: Leitura Hibrida
         shell: bash
