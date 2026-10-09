@@ -85,7 +85,7 @@ jobs:
           workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
   deploy_ambientes:
     needs: [autenticar_producao, Relatorios-Multi-Nuvem]
-    if: needs.Relatorios-Multi-Nuvem.result == 'success'
+    if: always() && needs.Relatorios-Multi-Nuvem.result == 'success'
     runs-on: ubuntu-latest
     environment: ${{ inputs.ambiente}}
     steps:
@@ -93,14 +93,14 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: pasta_geral_auditoria
-          pattern: pasta_geral_auditoria/*
-          merge-multiple: true 
+          pattern: auditoria-*
+          # merge-multiple: true 
 
       - name: Leitura Hibrida
         shell: bash
         run: |
           find ./pasta_geral_auditoria -type f -name "log.txt" | while read -r arquivo; do
-            infra="$(basename $(dirname "$arquivo")")
+            infra="$(basename "$(dirname "$arquivo")")"
             echo "Infra: $infra"
             cat "$arquivo"  
           done 
