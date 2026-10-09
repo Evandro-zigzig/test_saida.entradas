@@ -25,14 +25,16 @@ on:
         required: true
         type: string
 
+
+
 concurrency:
   group: ${{ github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
-run-name: "${{github.event.inputs.ambiente}} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
+run-name: "${{inputs.ambiente}} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
 
 jobs:
-  gerar_relatorios:
+  Relatorios-Multi-Nuvem:
     outputs:
       saida_1: ${{ steps.tuk_1.outputs.status_fase_1}}
     strategy:
@@ -54,26 +56,36 @@ jobs:
           name: auditoria-${{matrix.os }}-${{matrix.nuvem}}
           path: log.txt
 
-      - name: Exportacao Global
+      - name: Exportacao de Metadados
         id: tuk_1
         run: |
           echo "status_fase_1=MATRIZ-SUCESSO" >> $GITHUB_OUTPUT
 
-  validar_tokens:
-    needs: [gerar_relatorios] 
-    if: github.event_name == 'workflow_dispatch' && success()
+  autenticar_producao:
+    needs: [Relatorios-Multi-Nuvem] 
+    if: inputs.ambiente == 'producao' && success()
     runs-on: ubuntu-latest
-    env:
-      TOKEN_CORRETO: ${{ secrets.TOKEN_PRODUCAO }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Trava no step
-        if: ${{inputs.ambiente != 'producao' || inputs.ambiente == 'producao' && inputs.token_verificacao == env.TOKEN_CORRETO}} 
-        run: |
-          echo "Token Validado com Sucesso"  
-
+      - name: Troca de Token para Autenticacao AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::123456789100:role/my-github-actions-role
+          role-session-name: MySessionName
+        # run: |
+        #   echo "Token Validado com Sucesso"
+      - name: Troca de Token para Autenticacao GCP Credentials      
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: 'my-project'
+          service_account:
+          workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
   deploy_ambientes:
-    needs: [validar_tokens, gerar_relatorios]
-    if: success()
+    needs: [autenticar_producao, Relatorios-Multi-Nuvem]
+    if: needs.Relatorios-Multi-Nuvem.result == 'success'
     runs-on: ubuntu-latest
     environment: ${{ inputs.ambiente}}
     steps:
@@ -91,10 +103,10 @@ jobs:
             cat "$arquivo"  
           done 
           echo "------------------------------"
-          echo " Status: ${{ needs.gerar_relatorios.outputs.saida_1 }} " 
+          echo " Status: ${{ needs.Relatorios-Multi-Nuvem.outputs.saida_1 }} " 
 
   alarme_falha:
-    needs: [gerar_relatorios, validar_tokens, deploy_ambientes]
+    needs: [Relatorios-Multi-Nuvem, autenticar_producao, deploy_ambientes]
     if: failure() || cancelled()
     runs-on: ubuntu-latest 
     steps:
