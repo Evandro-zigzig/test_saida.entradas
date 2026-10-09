@@ -46,8 +46,8 @@ jobs:
     
     steps:
       - name: Criacao dos logs de auditoria
+        shell: bash 
         run: |
-          shell: bash
           echo "Relatorio Nuvem OK: ${{ matrix.nuvem}} em ${{ matrix.os}}" > log.txt
 
       - name: Upload Dinamico
