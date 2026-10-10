@@ -1,4 +1,4 @@
-name: Esteira de auditoria
+.name: Auditoria Global and Multi-Cloud
 
 on:
   push:
@@ -20,77 +20,96 @@ on:
           - desenvolvimento
           - teste
           - producao
-
       token_verificacao:
         description: Escreva a senha token
         required: true
         type: string
 
+
+
 concurrency:
   group: ${{ github.workflow}}-${{github.ref}}
   cancel-in-progress: true
 
-run-name: "Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
+run-name: "${{ inputs.ambiente || 'CI' }} Auditoria Global @${{github.actor}} via GATILHO-${{github.ref}} e versao-${{github.run_number}}"
 
 jobs:
-  gerar_relatorios:
+  Relatorios-Multi-Nuvem:
     outputs:
       saida_1: ${{ steps.tuk_1.outputs.status_fase_1}}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
         nuvem: [aws, gcp]
     runs-on: ${{ matrix.os}}
     
     steps:
-      - name: Criacao da pasta e ficheiro
+      - name: Criacao dos logs de auditoria
+        shell: bash 
         run: |
-          mkdir pasta_auditoria
-          echo "Relatorio Nuvem OK" > ./pasta_auditoria/log.txt
+          echo "Relatorio Nuvem OK para ${{ matrix.nuvem}} em ${{ matrix.os}}" > log.txt
 
       - name: Upload Dinamico
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: auditoria-${{matrix.os }}-${{matrix.nuvem}}
-          path: pasta_auditoria
+          path: log.txt
 
-      - name: Exportacao Global
+      - name: Exportacao de Metadados
         id: tuk_1
         run: |
-          echo "status_fase_1=MATRIZ-SUCESSO" >> $GITHUB_OUTPUT
+          echo "status_fase_1=MATRIZ-SUCESSO" >> "$GITHUB_OUTPUT"
 
-  validar_tokens:
-    needs: [gerar_relatorios] 
-    if: github.event_name == 'workflow_dispatch' && success()
+  autenticar_producao:
+    needs: [Relatorios-Multi-Nuvem] 
+    if: inputs.ambiente == 'producao' && success()
     runs-on: ubuntu-latest
-    env:
-      TOKEN_CORRETO: ${{ secrets.TOKEN_PRODUCAO }}
+    permissions:
+      contents: read
+      id-token: write
     steps:
-      - name: Trava no step
-        if: github.event.inputs.token_verificacao == env.TOKEN_CORRETO
-        run: |
-          echo "Token Validado com Sucesso"  
-
+      - name: Troca de Token para Autenticacao AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: us-east-2
+          role-to-assume: arn:aws:iam::123456789100:role/my-github-actions-role
+          role-session-name: MySessionName
+        # run: |
+        #   echo "Token Validado com Sucesso"
+      - name: Troca de Token para Autenticacao GCP Credentials      
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: 'my-project'
+          service_account:
+          workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
   deploy_ambientes:
-    needs: [validar_tokens, gerar_relatorios]
-    if: success()
+    needs: [autenticar_producao, Relatorios-Multi-Nuvem]
+    if: always() && needs.Relatorios-Multi-Nuvem.result == 'success'
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.ambiente}}
+    environment: ${{ inputs.ambiente}}
     steps:
       - name: Download do Artefacto
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
-          name: auditoria-ubuntu-latest-aws
-          path: .
+          path: pasta_geral_auditoria
+          pattern: auditoria-*
+          # merge-multiple: true 
 
       - name: Leitura Hibrida
+        shell: bash
         run: |
-          cat pasta_auditoria/log.txt
-          echo " Status: ${{ needs.gerar_relatorios.outputs.saida_1 }} " 
+          find ./pasta_geral_auditoria -type f -name "log.txt" | while read -r arquivo; do
+            infra="$(basename "$(dirname "$arquivo")")"
+            echo "Infra: $infra"
+            cat "$arquivo"  
+          done 
+          echo "------------------------------"
+          echo " Status: ${{ needs.Relatorios-Multi-Nuvem.outputs.saida_1 }} " 
 
   alarme_falha:
-    needs: [gerar_relatorios, validar_tokens, deploy_ambientes]
-    if: failure()  
+    needs: [Relatorios-Multi-Nuvem, autenticar_producao, deploy_ambientes]
+    if: failure() || cancelled()
     runs-on: ubuntu-latest 
     steps:
       - name: Notificacao de erros
