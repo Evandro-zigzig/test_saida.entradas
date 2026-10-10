@@ -1,4 +1,4 @@
-name: Auditoria Global and Multi-Cloud
+.name: Auditoria Global and Multi-Cloud
 
 on:
   push:
