@@ -1,0 +1,155 @@
+name: Multi-Environment Deployment and Rollback
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    # inputs:
+    #   environment:
+    #     description: Select the environment
+    #     required: true
+    #     type: choice
+    #     options:
+    #       - development
+    #       - staging
+    #       - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow}}-${{ github.ref}}
+  cancel-in-progress: false
+  
+run-name: "Deployment and Rollback @${{ github.actor}} via TRIGGER-${{ github.ref}} and version-${{ github.run_number}}" 
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version.1: ${{ steps.generate_version.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4 
+    - name: Display the current version 
+      id: generate_version
+      run: |
+        echo "version=${{ github.run_number}}" >> $GITHUB_OUTPUT
+    - name: Bundle the Artifact
+      run: |
+        mkdir -p artifact_package
+        echo "app-${{ github.run_number }}-SHA-${{ github.sha }}" > artifact_package/app.txt    
+        
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        path: artifact_package
+        name: app-${{ github.run_number}}
+
+  deploy_dev:
+    needs: [build]
+    environment: development
+    runs-on: ubuntu-latest  
+    permissions:  
+      contents: read
+      id-token: write
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+            name: app-${{ github.run_number}}
+            path: app
+      - name: Deploy to Development
+        env:
+          APP_CONFIG: ${{  secrets.APP_CONFIG_DEV }}
+        run: |
+          cat app/app.txt
+          echo "Deployment to Development completed successfully."  
+          
+  deploy_staging:
+    needs: [deploy_dev]
+    environment: staging
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-${{ github.run_number}}
+          path: app
+      - name: Deploy to Staging
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG_STAGING }}
+        run: |
+          cat app/app.txt
+          echo "Deployment to Staging completed successfully."  
+
+  deploy_prod:
+    needs: [deploy_staging]
+    environment: production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-${{ github.run_number}}
+          path: app
+      - name: Deploy to Production
+        env:
+          APP_CONFIG: ${{ secrets.APP_CONFIG_PROD }}
+        run: |
+          cat app/app.txt
+          echo "Deployment to Production completed successfully." 
+          
+  health_check:
+    needs: [deploy_prod]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Perfom Health Cheks
+        shell: bash
+        run: |
+          echo "Performing health checks on the deployed application..."
+          if curl -fsS --connect-timeout 10 -o /dev/null https://httpbin.org/status/200/health; then
+            echo "✅ OK: The API is healthy and responding as expected."
+          else
+            echo "Failed: The API is not responding."
+            exit 1
+          fi
+          echo "Health checks completed successfully."
+
+  rollback:
+    needs: [deploy_prod, health_check]
+    if: always() && needs.health_check.result == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rollback Deployment
+        shell: bash
+        run: |
+          echo "Rolling back the deployment due to health check failure..."
+          echo "Rollback completed successfully." 
+ 
+  errors_alarms:
+    needs: [build, deploy_dev, deploy_staging, deploy_prod, health_check, rollback] 
+    if: always() && (failure() || cancelled())
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Errors and Alarms  
+        shell: bash
+        run: |
+          echo "🚨 PANE NO SISTEMA"
+          echo "──────────────────────────────────"
+          echo "Workflow: ${{ github.workflow }}"
+          echo "Run: #${{ github.run_number }}"
+          echo "Ator: @${{ github.actor }}"
+          echo "Branch: ${{ github.ref }}"
+          echo "Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo "──────────────────────────────────"       
+
+      
+
+      
