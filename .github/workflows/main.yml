@@ -32,4 +32,6 @@ jobs:
           echo "Ambiente selecionado: ${{ inputs.Ambiente}}"   
           echo "Usuário que disparou: ${{ github.actor}}" 
           echo "Motivo do deploy: ${{ inputs.Motivo}}"
-          echo "Notificar no slack: ${{ inputs.Notificar}}"
+          echo "Notificar no slack: ${{ inputs.Notificar}}"  
+          
+          # coment
