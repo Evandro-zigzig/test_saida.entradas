@@ -1,0 +1,56 @@
+name: Reusable Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      scan-target:
+        description: "Target for the security scan"
+        required: true
+        type: string
+    outputs:
+      security-scan-status:
+        description: "Status of the security scan"
+        value: ${{ jobs.scan_vunerabilities.outputs.scan_status }}    
+
+permissions: {}
+
+
+jobs:
+  scan_vunerabilities:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    outputs:
+      scan_status: ${{ steps.set_output.outputs.status }}    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Trivy filesystem scan 
+        id: trivy 
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with: 
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true    
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+      - name: Specify the output status
+        id: set_output
+        shell: bash
+        run: |
+          if [ "${{ steps.trivy.outcome }}" == "success" ]; then
+            echo "Security scan completed successfully."
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "Security scan failed or found vulnerabilities."
+            echo "status=failure" >> "$GITHUB_OUTPUT"
+          fi      
+

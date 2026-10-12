@@ -1,0 +1,13 @@
+name: Test Security Reusable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    uses: ./.github/workflows/reusable-security.yml
+    with:
+      scan-target: ${{ github.sha }}
+    permissions:
+      contents: read
+      security-events: write
