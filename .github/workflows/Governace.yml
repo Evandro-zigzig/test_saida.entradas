@@ -24,10 +24,18 @@ concurrency:
 run-name: "Deployment and Rollback @${{ github.actor}} via TRIGGER-${{ github.ref}} and version-${{ github.run_number}}" 
 
 jobs:
+  security_scan:
+    uses: ./.github/workflows/reusable-security.yml 
+    with:
+      scan-target: ${{ github.sha }}
+    permissions:
+      contents: read
+      security-events: write    
   build:
+    needs: [security_scan]
     runs-on: ubuntu-latest
     outputs:
-      version.1: ${{ steps.generate_version.outputs.version }}
+      version_1: ${{ steps.generate_version.outputs.version }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4 
@@ -110,11 +118,11 @@ jobs:
     needs: [deploy_prod]
     runs-on: ubuntu-latest
     steps:
-      - name: Perfom Health Cheks
+      - name: Perfom Health Checks
         shell: bash
         run: |
           echo "Performing health checks on the deployed application..."
-          if curl -fsS --connect-timeout 10 -o /dev/null https://httpbin.org/status/200/health; then
+          if curl -fsS --connect-timeout 10 -o /dev/null https://httpbin.org/status/200; then
             echo "✅ OK: The API is healthy and responding as expected."
           else
             echo "Failed: The API is not responding."
@@ -134,7 +142,7 @@ jobs:
           echo "Rollback completed successfully." 
  
   errors_alarms:
-    needs: [build, deploy_dev, deploy_staging, deploy_prod, health_check, rollback] 
+    needs: [security_scan, build, deploy_dev, deploy_staging, deploy_prod, health_check, rollback] 
     if: always() && (failure() || cancelled())
     runs-on: ubuntu-latest
     steps:
@@ -149,7 +157,6 @@ jobs:
           echo "Branch: ${{ github.ref }}"
           echo "Link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           echo "──────────────────────────────────"       
-
-      
+          
 
       
