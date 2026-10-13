@@ -54,3 +54,47 @@ jobs:
             echo "status=failure" >> "$GITHUB_OUTPUT"
           fi      
 
+  gitleaks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code 
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  supply_chain_check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Script security check 
+        shell: bash
+        run: |
+          ERROR=0
+          while IFS=: read -r file number content; do
+            # 1. Extract reference
+            reference=$(echo "$content" | sed -E 's/.*uses:[[:space:]]*([^[:space:]]+).*/\1/')
+            # 3. Ignore local actions
+            [[ "$action" == ./* ]] && continue
+            # 4. Ignore official actions
+            [[ "$action" == actions/* || "$action" == github/* ]] && continue
+            # 5. Verificar SHA
+            if [[ ! "$ref" =~ ^[0-9a-f]{40}$ ]]; then
+              echo  "$file:$number → $action@$ref is not pinned by SHA"
+              ERROR=1
+            fi
+
+          done < <(grep -rn 'uses:' .github/workflows/Governance.yml)
+
+          exit $ERROR
+            
