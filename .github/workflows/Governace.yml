@@ -25,7 +25,7 @@ run-name: "Deployment and Rollback @${{ github.actor}} via TRIGGER-${{ github.re
 
 jobs:
   security_scan:
-    uses: ./.github/workflows/reusable-security.yml 
+    uses: ./.github/workflows/reusable-security.yml
     with:
       scan-target: ${{ github.sha }}
     permissions:
