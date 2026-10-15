@@ -1,8 +1,8 @@
 name: Esteira de auditoria
 
 on:
-  push:
-    branches: [feature/**, release/**]
+  # push:
+  #   branches: [feature/**, release/**]
   pull_request:
     branches:
       - main
